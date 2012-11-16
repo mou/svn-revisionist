@@ -20,11 +20,15 @@ def parse_options():
             propname = args[0]; del args[0]
             replacements = []
             while args[0] in ["--replace", "-r",
-                              "--normalize-line-breaks", "-n"]:
+                              "--normalize-line-breaks", "-n",
+                              "--delete", "-d"]:
                 if args[0] in ["--replace", "-r"]:
                     del args[0]
                     replacements.append((args[0], args[1]))
                     del args[0]
+                    del args[0]
+                elif args[0] in ["--delete", "-d"]:
+                    replacements.append((args[0], None))
                     del args[0]
                 else:
                     del args[0]
@@ -46,13 +50,20 @@ def main():
         return 1
 
     def edit(props):
+        todelete = []
         for propname in props:
             for propmatch, replacements in propsubs:
                 if fnmatchcase(propname, propmatch):
                     val = props[propname]
                     for old, new in replacements:
-                        val = val.replace(old, new)
-                    props[propname] = val
+                        if new == None:
+                            if propname not in todelete: todelete.append(propname)
+                        else:
+                            val = val.replace(old, new)
+                            props[propname] = val
+        if len(todelete): print >>sys.stderr, todelete 
+        for propname in todelete:
+            del props[propname]
 
     propnames = [propname for propname, x in propsubs]
     events = revisionist.pull(sys.stdin)
@@ -75,12 +86,13 @@ def print_usage():
  PropertyClause  = PropertyOpt PropertyName EditClause*
  PropertyOpt     = -p | --property
  PropertyName    = text (unix-style glob syntax accepted)
- EditClause      = NormalizeOpt | ReplaceClause
+ EditClause      = NormalizeOpt | ReplaceClause | DeleteClause
  NormalizeOpt    = -n | --normalize-line-breaks
  ReplaceClause   = ReplaceOpt OldText NewText
  ReplaceOpt      = -r | --replace
  OldText         = text
  NewText         = text
+ DeleteClause    = -d | --delete
 
  e.g.
 
